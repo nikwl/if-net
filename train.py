@@ -3,6 +3,7 @@ import models.data.voxelized_data_shapenet as voxelized_data
 from models import training
 import argparse
 import torch
+import json, os
 
 # python train.py -posed -dist 0.5 0.5 -std_dev 0.15 0.05 -res 32 -batch_size 40 -m
 parser = argparse.ArgumentParser(
@@ -20,12 +21,27 @@ parser.add_argument('-batch_size' , default=30, type=int)
 parser.add_argument('-res' , default=32, type=int)
 parser.add_argument('-m','--model' , default='LocNet', type=str)
 parser.add_argument('-o','--optimizer' , default='Adam', type=str)
+parser.add_argument('-splits', type=str)
+parser.add_argument('-num_workers', type=int, default=30)
 
 try:
     args = parser.parse_args()
 except:
     args = parser.parse_known_args()[0]
 
+
+def get_paths(splits, key):
+    object_id_dict = json.load(open(splits, "r"))
+    paths = []
+    for o in object_id_dict[key]:
+        for break_idx in range(10):
+            path = os.path.join(
+                "/media/DATACENTER2/nikolas/dev/data/mendnet/datasets/v3.ShapeNet_r",
+                o[0], o[1], "models"
+            )
+            if os.path.exists(path + "/model_c.obj"):
+                paths.append([path, break_idx])
+    return paths
 
 if args.model ==  'ShapeNet32Vox':
     net = model.ShapeNet32Vox()
@@ -41,11 +57,31 @@ if args.model == 'SVR':
 
 
 
-train_dataset = voxelized_data.VoxelizedDataset('train', voxelized_pointcloud= args.pointcloud, pointcloud_samples= args.pc_samples, res=args.res, sample_distribution=args.sample_distribution,
-                                          sample_sigmas=args.sample_sigmas ,num_sample_points=50000, batch_size=args.batch_size, num_workers=30)
+train_dataset = voxelized_data.VoxelizedDataset(
+    'train', 
+    split_file=get_paths(args.splits, "id_train_list"),
+    voxelized_pointcloud=args.pointcloud, 
+    pointcloud_samples=args.pc_samples, 
+    res=args.res, 
+    sample_distribution=args.sample_distribution,
+    sample_sigmas=args.sample_sigmas,
+    num_sample_points=50000, 
+    batch_size=args.batch_size, 
+    num_workers=args.num_workers,
+)
 
-val_dataset = voxelized_data.VoxelizedDataset('val', voxelized_pointcloud= args.pointcloud , pointcloud_samples= args.pc_samples, res=args.res, sample_distribution=args.sample_distribution,
-                                          sample_sigmas=args.sample_sigmas ,num_sample_points=50000, batch_size=args.batch_size, num_workers=30)
+val_dataset = voxelized_data.VoxelizedDataset(
+    'val', 
+    split_file=get_paths(args.splits, "id_val_list"),
+    voxelized_pointcloud=args.pointcloud, 
+    pointcloud_samples=args.pc_samples, 
+    res=args.res, 
+    sample_distribution=args.sample_distribution,
+    sample_sigmas=args.sample_sigmas,
+    num_sample_points=50000, 
+    batch_size=args.batch_size, 
+    num_workers=args.num_workers,
+)
 
 
 

@@ -22,10 +22,12 @@ class VoxelizedDataset(Dataset):
         assert np.any(self.sample_distribution < 0) == False
         assert len(self.sample_distribution) == len(self.sample_sigmas)
 
-        self.path = data_path
-        self.split = np.load(split_file)
+        # self.path = data_path
+        # self.split = np.load(split_file)
+        self.split = split_file
 
-        self.data = self.split[mode]
+        # self.data = self.split[mode]
+        self.data = self.split
         self.res = res
 
         self.num_sample_points = num_sample_points
@@ -43,14 +45,16 @@ class VoxelizedDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        path = self.path + self.data[idx]
+        # path = self.path + self.data[idx]
+        path, break_idx = self.data[idx]
 
         if not self.voxelized_pointcloud:
+            raise RuntimeError
             occupancies = np.load(path + '/voxelization_{}.npy'.format(self.res))
             occupancies = np.unpackbits(occupancies)
             input = np.reshape(occupancies, (self.res,)*3)
         else:
-            voxel_path = path + '/voxelized_point_cloud_{}res_{}points.npz'.format(self.res, self.pointcloud_samples)
+            voxel_path = path + '/voxelized_point_cloud_{}res_{}_{}points.npz'.format(self.res, self.pointcloud_samples, break_idx)
             occupancies = np.unpackbits(np.load(voxel_path)['compressed_occupancies'])
             input = np.reshape(occupancies, (self.res,)*3)
 
@@ -59,7 +63,7 @@ class VoxelizedDataset(Dataset):
         occupancies = []
 
         for i, num in enumerate(self.num_samples):
-            boundary_samples_path = path + '/boundary_{}_samples.npz'.format(self.sample_sigmas[i])
+            boundary_samples_path = path + '/boundary_{}_{}_samples.npz'.format(self.sample_sigmas[i], break_idx)
             boundary_samples_npz = np.load(boundary_samples_path)
             boundary_sample_points = boundary_samples_npz['points']
             boundary_sample_coords = boundary_samples_npz['grid_coords']
@@ -73,7 +77,13 @@ class VoxelizedDataset(Dataset):
         assert len(occupancies) == self.num_sample_points
         assert len(coords) == self.num_sample_points
 
-        return {'grid_coords':np.array(coords, dtype=np.float32),'occupancies': np.array(occupancies, dtype=np.float32),'points':np.array(points, dtype=np.float32), 'inputs': np.array(input, dtype=np.float32), 'path' : path}
+        return {
+            'grid_coords': np.array(coords, dtype=np.float32),
+            'occupancies': np.array(occupancies, dtype=np.float32),
+            'points' : np.array(points, dtype=np.float32), 
+            'inputs': np.array(input, dtype=np.float32), 
+            'path': path,
+        }
 
     def get_loader(self, shuffle =True):
 
