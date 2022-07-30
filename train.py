@@ -22,6 +22,7 @@ parser.add_argument('-res' , default=32, type=int)
 parser.add_argument('-m','--model' , default='LocNet', type=str)
 parser.add_argument('-o','--optimizer' , default='Adam', type=str)
 parser.add_argument('-splits', type=str)
+parser.add_argument('-name', type=str)
 parser.add_argument('-num_workers', type=int, default=30)
 
 try:
@@ -85,10 +86,13 @@ val_dataset = voxelized_data.VoxelizedDataset(
 
 
 
-exp_name = 'i{}_dist-{}sigmas-{}v{}_m{}'.format(  'PC' + str(args.pc_samples) if args.pointcloud else 'Voxels',
-                                    ''.join(str(e)+'_' for e in args.sample_distribution),
-                                       ''.join(str(e) +'_'for e in args.sample_sigmas),
-                                                                args.res,args.model)
+exp_name = '{}_i{}_dist-{}sigmas-{}v{}_m{}'.format(  
+    args.name,
+    'PC' + str(args.pc_samples) if args.pointcloud else 'Voxels',
+    ''.join(str(e)+'_' for e in args.sample_distribution),
+    ''.join(str(e) +'_'for e in args.sample_sigmas),
+    args.res,args.model
+)
 
 trainer = training.Trainer(net,torch.device("cuda"),train_dataset, val_dataset,exp_name, optimizer=args.optimizer)
 trainer.train_model(1500)
